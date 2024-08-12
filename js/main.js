@@ -4,8 +4,9 @@ const ctx = canvas.getContext('2d');
 canvas.height = 512;
 canvas.width = window.innerWidth;
 
+const birdX = 100;
 const gravity = 0.01;
-const moveSpeed = .1;
+const moveSpeed = .15;
 const jumpPower = .4
 const delayBetweenPipes = 2000;
 
@@ -17,6 +18,7 @@ let isPaused, isGameOver;
 let bird;
 let pipeSpawnInterval;
 const pipes = [];
+let nextPipe = null;
 
 class Bird {
     size = 50;
@@ -121,8 +123,26 @@ class Pipe {
     }
 }
 
+const getNextPipe = () => {
+    for (const pipe of pipes) {
+        if (pipe.center.x + pipe.width/2 > birdX) {
+            return pipe
+        }
+    }
+}
+
+const updateScore = () => {
+    if(nextPipe.center.x + nextPipe.width/2 <= birdX) {
+        nextPipe = getNextPipe();
+        if(bird.isAlive) {
+            bird.score++;
+            console.log(bird.score);
+        }
+    }
+}
+
 const init = () => {    
-    bird = new Bird(100, canvas.height/2);
+    bird = new Bird(birdX, canvas.height/2);
     pipes.length = 0;
     isPaused = true;
     clearInterval(pipeSpawnInterval);
@@ -131,6 +151,7 @@ const init = () => {
 
 const gameOver = () => {
     clearInterval(pipeSpawnInterval);
+    nextPipe = null;
     isGameOver = true;
     isPaused = true;
 }
@@ -148,6 +169,7 @@ const spawnPipes = () => {
 
     let newPipe = new Pipe(x, y, gap, width)
     pipes.push(newPipe);
+    if(nextPipe === null) nextPipe = pipes[0];
 }
 
 const animate = () => {
@@ -155,16 +177,19 @@ const animate = () => {
     deltaTime = Date.now() - lastUpdate;
     lastUpdate = Date.now();
     if (!isPaused) {
-    ctx.clearRect(0,0,canvas.width,canvas.height); // clear screen
+        ctx.clearRect(0,0,canvas.width,canvas.height); // clear screen
 
-    for(const pipe of pipes) {
-        pipe.move();
-        pipe.draw();
-        if(pipe.checkCollision(bird)){
-            bird.die();
+        for(const pipe of pipes) {
+            pipe.move();
+            pipe.draw();
         }
-    }
-    bird.update();
+        if(nextPipe !== null) {
+            updateScore();
+            if(nextPipe.checkCollision(bird)){
+                bird.die();
+            }
+        }
+        bird.update();
     }
 requestAnimationFrame(animate)
 }
