@@ -19,11 +19,23 @@ let deltaTime = 0;
 let lastUpdate = Date.now();
 let isPaused, isGameOver;
 
-
-let bird;
-let pipeSpawnInterval;
+const birdCount = 100
 const pipes = [];
 let nextPipe = null;
+let birds;
+let bestBird;
+
+const generateBirds = (count) => {
+    let arr = []
+    for(let i = 0; i < count; i++){
+        let bird = new Bird(birdX, birdCanvas.height/2, jumpPower, gravity, moveSpeed, "AI");
+        arr.push(bird);
+    }
+    return arr
+}
+
+
+
 
 const getNextPipe = () => {
     for (const pipe of pipes) {
@@ -33,7 +45,7 @@ const getNextPipe = () => {
     }
 }
 
-const updateScore = () => {
+const updateScore = (bird) => {
     if(nextPipe.center.x + nextPipe.width/2 <= birdX) {
         nextPipe = getNextPipe();
         if(bird.isAlive) {
@@ -42,20 +54,33 @@ const updateScore = () => {
     }
 }
 
-const init = () => {    
-    bird = new Bird(birdX, birdCanvas.height/2, jumpPower, gravity, moveSpeed, "Player");
+const init = () => { 
     isPaused = true;
-    clearInterval(pipeSpawnInterval);
     pipes.length = 0;
-    pipeSpawnInterval = setInterval(spawnPipes, delayBetweenPipes);
+    birds = generateBirds(birdCount);
+    bestBird = birds[0]   
+    if(localStorage.getItem("bestBrain")){
+        bestBird.brain=JSON.parse(localStorage.getItem("bestBrain"))
+        for(let i = 0; i < birds.length; i++) {
+            birds[i].brain=JSON.parse(
+                localStorage.getItem("bestBrain")
+            )
+            if (i!= 0) {
+                NeuralNetwork.mutate(birds[i].brain,0.5)
+            }
+        }
+    }
 }
 
 const gameOver = () => {
-    clearInterval(pipeSpawnInterval);
     pipes.length = 0;
     nextPipe = null;
     isGameOver = true;
     isPaused = true;
+
+    save();
+    init();
+    isPaused = false;
 }
 
 const spawnPipes = () => {
@@ -74,14 +99,32 @@ const spawnPipes = () => {
     if(nextPipe === null) nextPipe = pipes[0];
 }
 
+const save = () => {
+    localStorage.setItem("bestBrain",
+        JSON.stringify(bestBird.brain)
+    )
+}
+
+const discard = () => {
+    localStorage.removeItem("bestBrain");
+}
+
+
+let timeUntilNextPipe = 0
 const animate = () => {
     // delattime
     deltaTime = Date.now() - lastUpdate;
     lastUpdate = Date.now();
-
+    bestBird = birds.find(b => b.lifeTime == Math.max(...birds.map(b => b.lifeTime)));
     if (!isPaused) {
         birdCtx.clearRect(0,0,birdCanvas.width,birdCanvas.height); // clear screen
-
+        if (timeUntilNextPipe <= 0) {
+            spawnPipes()
+            timeUntilNextPipe = delayBetweenPipes
+        } 
+        else {
+            timeUntilNextPipe -= deltaTime
+        }
         for(const pipe of pipes) {
             pipe.move(deltaTime);
             pipe.draw(birdCtx, birdCanvas);
@@ -89,26 +132,34 @@ const animate = () => {
                 setTimeout(() => pipes.shift(), 0);
             }
         }
-        if(nextPipe !== null) {
-            updateScore();
-            if(nextPipe.checkCollision(bird, birdCanvas)){
-                bird.die();
+        
+        birdCtx.globalAlpha = 0.2;
+        for(const bird of birds) {
+            bird.update(deltaTime, birdCanvas, nextPipe);
+            bird.draw(birdCtx);
+            if(nextPipe !== null) {
+                updateScore(bird);            
+                if(nextPipe.checkCollision(bird, birdCanvas)){
+                    bird.die();
+                }
+            }
+            if(bird.isAlive){
+                bird.lifeTime++
             }
         }
-        bird.update(deltaTime, birdCanvas, nextPipe);
-        bird.draw(birdCtx);
+        birdCtx.globalAlpha = 1;
+        bestBird.draw(birdCtx)
+    }   
+    if (birds.every(b => !b.isAlive)){
+        gameOver()
     }
-    Visualizer.drawNetwork(networkCtx, bird.brain);
-
-
-
-    if(!isGameOver && !bird.isAlive) gameOver();
+    Visualizer.drawNetwork(networkCtx, bestBird.brain);
 requestAnimationFrame(animate)
 }
 
 
 
-addEventListener('click', (e) => {
+birdCanvas.addEventListener('click', () => {
     if(isPaused) {
         isPaused = false;
     }

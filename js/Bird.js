@@ -17,6 +17,7 @@ class Bird {
         this.isAlive = true;
         this.color = 'black'
         this.score = 0;
+        this.lifeTime = 0;
     }
 
     draw(ctx) {
@@ -52,6 +53,9 @@ class Bird {
 
             const offsets = this.sensor.readings.map(s => s ?? 0);
             const outputs = NeuralNetwork.feedForward(offsets, this.brain);
+            if(outputs[0] == 1) {
+                this.controls.jump = true;
+            }
         }
     }
     move(deltaTime) {
