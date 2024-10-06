@@ -4,6 +4,10 @@ body {
 
 }
 
-#myCanvas {
+#birdCanvas {
     border: 1px solid black;
+}
+
+#networkCanvas {
+    background: black;
 }
