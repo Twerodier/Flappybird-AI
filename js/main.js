@@ -1,10 +1,10 @@
 const birdCanvas = document.getElementById('birdCanvas');
-birdCanvas.height = 512;
-birdCanvas.width = 512;
+birdCanvas.height = 500;
+birdCanvas.width = 500;
 
 const networkCanvas = document.getElementById('networkCanvas');
-networkCanvas.height = 512;
-networkCanvas.width = 512
+networkCanvas.height = 500;
+networkCanvas.width = 300
 
 const birdCtx = birdCanvas.getContext('2d');
 const networkCtx = networkCanvas.getContext('2d');
